@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Medical Records &middot; Outpatient MS{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">Medical Records</h3>
+    {% if session.role in ['doctor', 'admin'] %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRecordModal">
+        <i class="bi bi-clipboard2-plus-fill me-1"></i>New Record
+    </button>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Visit Date</th>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Chief Complaint</th>
+                    <th>Diagnosis</th>
+                    <th>Treatment Plan</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in records %}
+                <tr>
+                    <td>{{ r.record_id }}</td>
+                    <td>{{ r.visit_date|dt('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ r.patient_name }}</td>
+                    <td>{{ r.doctor_name }}</td>
+                    <td class="text-truncate" style="max-width: 200px;">{{ r.chief_complaint or '-' }}</td>
+                    <td class="text-truncate" style="max-width: 200px;">{{ r.diagnosis or '-' }}</td>
+                    <td class="text-truncate" style="max-width: 200px;">{{ r.treatment_plan or '-' }}</td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No medical records yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if session.role in ['doctor', 'admin'] %}
+<!-- Add Medical Record Modal -->
+<div class="modal fade" id="addRecordModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="POST" action="{{ url_for('add_medical_record') }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-clipboard2-plus-fill me-1"></i>New Medical Record</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Patient *</label>
+                        <select name="patient_id" class="form-select" required>
+                            <option value="" disabled selected>Select patient</option>
+                            {% for p in patients %}
+                            <option value="{{ p.patient_id }}">{{ p.patient_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Doctor *</label>
+                        <select name="doctor_id" class="form-select" required>
+                            <option value="" disabled selected>Select doctor</option>
+                            {% for d in doctors %}
+                            <option value="{{ d.doctor_id }}">{{ d.doctor_name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label class="form-label">Related Appointment</label>
+                        <select name="appointment_id" class="form-select">
+                            <option value="">None</option>
+                            {% for a in appointments %}
+                            <option value="{{ a.appointment_id }}">#{{ a.appointment_id }} &mdash; {{ a.appointment_date }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Chief Complaint</label>
+                    <textarea name="chief_complaint" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Diagnosis</label>
+                    <textarea name="diagnosis" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Treatment Plan</label>
+                    <textarea name="treatment_plan" class="form-control" rows="2"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notes</label>
+                    <textarea name="notes" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Record</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+{% block title %}{{ patient.patient_name }} &middot; Outpatient MS{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0"><i class="bi bi-person-fill me-1"></i>{{ patient.patient_name }}</h3>
+    <a href="{{ url_for('patients') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-1"></i>Back to Patients
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header bg-white fw-semibold">Patient Information</div>
+            <div class="card-body">
+                <dl class="row mb-0">
+                    <dt class="col-5">Gender</dt><dd class="col-7">{{ patient.gender or '-' }}</dd>
+                    <dt class="col-5">Birth Date</dt><dd class="col-7">{{ patient.birth_date|dt }}</dd>
+                    <dt class="col-5">ID Card</dt><dd class="col-7">{{ patient.id_card or '-' }}</dd>
+                    <dt class="col-5">Phone</dt><dd class="col-7">{{ patient.phone or '-' }}</dd>
+                    <dt class="col-5">Blood Type</dt><dd class="col-7">{{ patient.blood_type or '-' }}</dd>
+                    <dt class="col-5">Address</dt><dd class="col-7">{{ patient.address or '-' }}</dd>
+                    <dt class="col-5">Allergies</dt>
+                    <dd class="col-7">
+                        {% if patient.allergy_history %}
+                        <span class="badge bg-danger-subtle text-danger-emphasis">{{ patient.allergy_history }}</span>
+                        {% else %}-{% endif %}
+                    </dd>
+                    <dt class="col-5">Registered</dt><dd class="col-7">{{ patient.created_at|dt('%Y-%m-%d %H:%M') }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-calendar-check-fill me-1 text-primary"></i>Appointment History
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead>
+                        <tr>
+                            <th>Date</th><th>Time</th><th>Doctor</th><th>Department</th><th>Status</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for a in appointments %}
+                        <tr>
+                            <td>{{ a.appointment_date|dt }}</td>
+                            <td>{{ a.time_slot }}</td>
+                            <td>{{ a.doctor_name }}</td>
+                            <td>{{ a.dept_name }}</td>
+                            <td><span class="badge bg-{{ a.status|badge_class }}">{{ a.status }}</span></td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="5" class="text-center text-muted py-3">No appointment history.</td></tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-white fw-semibold">
+                <i class="bi bi-clipboard2-pulse-fill me-1 text-success"></i>Medical History
+            </div>
+            <div class="card-body">
+                {% for h in history %}
+                <div class="border-start border-3 border-success ps-3 mb-3">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ h.diagnosis or 'No diagnosis recorded' }}</strong>
+                        <span class="text-muted small">{{ h.visit_date|dt('%Y-%m-%d %H:%M') }}</span>
+                    </div>
+                    <div class="small text-muted">{{ h.doctor_name }} &middot; {{ h.dept_name }}</div>
+                    <div class="mt-1"><strong>Chief complaint:</strong> {{ h.chief_complaint or '-' }}</div>
+                    <div><strong>Treatment plan:</strong> {{ h.treatment_plan or '-' }}</div>
+                    {% if h.notes %}<div class="text-muted small"><strong>Notes:</strong> {{ h.notes }}</div>{% endif %}
+                </div>
+                {% else %}
+                <p class="text-muted mb-0">No medical records on file.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

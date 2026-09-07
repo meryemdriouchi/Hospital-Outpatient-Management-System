@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% block title %}Prescriptions &middot; Outpatient MS{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">Prescriptions</h3>
+    {% if session.role in ['doctor', 'admin'] %}
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPrescriptionModal">
+        <i class="bi bi-file-earmark-plus-fill me-1"></i>New Prescription
+    </button>
+    {% endif %}
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Date</th>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for p in prescriptions %}
+                <tr>
+                    <td>{{ p.prescription_id }}</td>
+                    <td>{{ p.prescription_date|dt('%Y-%m-%d %H:%M') }}</td>
+                    <td>{{ p.patient_name }}</td>
+                    <td>{{ p.doctor_name }}</td>
+                    <td>${{ p.total_amount|money }}</td>
+                    <td><span class="badge bg-{{ p.status|badge_class }}">{{ p.status }}</span></td>
+                    <td class="d-flex gap-1">
+                        <a href="{{ url_for('prescription_detail', prescription_id=p.prescription_id) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye-fill"></i>
+                        </a>
+                        {% if p.status == 'pending' and session.role in ['pharmacist', 'admin'] %}
+                        <form method="POST" action="{{ url_for('dispense_prescription', prescription_id=p.prescription_id) }}"
+                              onsubmit="return confirm('Dispense this prescription and deduct stock?');">
+                            <button type="submit" class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-box-seam"></i> Dispense
+                            </button>
+                        </form>
+                        {% endif %}
+                        {% if p.status == 'dispensed' and not p.has_bill and session.role in ['cashier', 'admin'] %}
+                        <form method="POST" action="{{ url_for('generate_bill', prescription_id=p.prescription_id) }}">
+                            <button type="submit" class="btn btn-sm btn-outline-warning">
+                                <i class="bi bi-receipt"></i> Generate Bill
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="7" class="text-center text-muted py-4">No prescriptions yet.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if session.role in ['doctor', 'admin'] %}
+<!-- Add Prescription Modal -->
+<div class="modal fade" id="addPrescriptionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <form method="POST" action="{{ url_for('add_prescription') }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-plus-fill me-1"></i>New Prescription</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Medical Record *</label>
+                    <select name="record_id" class="form-select" required>
+                        <option value="" disabled selected>Select a medical record</option>
+                        {% for r in records %}
+                        <option value="{{ r.record_id }}">
+                            #{{ r.record_id }} &mdash; {{ r.patient_name }} / {{ r.doctor_name }} ({{ r.diagnosis or 'no diagnosis' }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <label class="form-label">Medicines *</label>
+                <table class="table table-sm align-middle" id="medLinesTable">
+                    <thead>
+                    <tr>
+                        <th style="width: 40%;">Medicine</th>
+                        <th style="width: 15%;">Quantity</th>
+                        <th style="width: 35%;">Dosage Instructions</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr>
+                        <td>
+                            <select name="medicine_id[]" class="form-select form-select-sm" required>
+                                <option value="" disabled selected>Select medicine</option>
+                                {% for m in medicines %}
+                                <option value="{{ m.medicine_id }}">{{ m.medicine_name }} (${{ '%.2f'|format(m.unit_price) }}, stock {{ m.stock_quantity }})</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td><input type="number" name="quantity[]" class="form-control form-control-sm" min="1" value="1" required></td>
+                        <td><input type="text" name="dosage[]" class="form-control form-control-sm" placeholder="e.g. 1 tablet 3x/day"></td>
+                        <td><button type="button" class="btn btn-sm btn-outline-danger remove-line"><i class="bi bi-trash"></i></button></td>
+                    </tr>
+                    </tbody>
+                </table>
+                <button type="button" id="addLineBtn" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-plus-lg"></i> Add Medicine Line
+                </button>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Save Prescription</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('addLineBtn')?.addEventListener('click', function () {
+    const tbody = document.querySelector('#medLinesTable tbody');
+    const newRow = tbody.rows[0].cloneNode(true);
+    newRow.querySelectorAll('select, input').forEach(el => {
+        if (el.tagName === 'SELECT') { el.selectedIndex = 0; }
+        else if (el.type === 'number') { el.value = 1; }
+        else { el.value = ''; }
+    });
+    tbody.appendChild(newRow);
+});
+
+document.querySelector('#medLinesTable')?.addEventListener('click', function (e) {
+    const btn = e.target.closest('.remove-line');
+    if (!btn) return;
+    const tbody = document.querySelector('#medLinesTable tbody');
+    if (tbody.rows.length > 1) {
+        btn.closest('tr').remove();
+    }
+});
+</script>
+{% endblock %}

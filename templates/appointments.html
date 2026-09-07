@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Appointments &middot; Outpatient MS{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="fw-bold mb-0">Appointments</h3>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#scheduleModal">
+        <i class="bi bi-calendar-plus-fill me-1"></i>Schedule Appointment
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Patient</th>
+                    <th>Doctor</th>
+                    <th>Department</th>
+                    <th>Date</th>
+                    <th>Time Slot</th>
+                    <th>Status</th>
+                    <th>Symptoms</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for a in appointments %}
+                <tr>
+                    <td>{{ a.appointment_id }}</td>
+                    <td>{{ a.patient_name }}</td>
+                    <td>{{ a.doctor_name }}</td>
+                    <td>{{ a.dept_name }}</td>
+                    <td>{{ a.appointment_date|dt }}</td>
+                    <td>{{ a.time_slot }}</td>
+                    <td><span class="badge bg-{{ a.status|badge_class }}">{{ a.status }}</span></td>
+                    <td class="text-truncate" style="max-width: 220px;">{{ a.symptoms or '-' }}</td>
+                    <td>
+                        {% if a.status == 'scheduled' %}
+                        <form method="POST" action="{{ url_for('cancel_appointment', appointment_id=a.appointment_id) }}"
+                              onsubmit="return confirm('Cancel this appointment?');">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-x-circle-fill"></i> Cancel
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center text-muted py-4">No appointments found.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Appointment Modal -->
+<div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <form method="POST" action="{{ url_for('add_appointment') }}" class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus-fill me-1"></i>Schedule Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Patient *</label>
+                    <select name="patient_id" class="form-select" required>
+                        <option value="" disabled selected>Select a patient</option>
+                        {% for p in patients %}
+                        <option value="{{ p.patient_id }}">{{ p.patient_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Department *</label>
+                    <select id="deptSelect" class="form-select" required>
+                        <option value="" disabled selected>Select a department</option>
+                        {% for d in departments %}
+                        <option value="{{ d.dept_id }}">{{ d.dept_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Doctor *</label>
+                    <select name="doctor_id" id="doctorSelect" class="form-select" required disabled>
+                        <option value="" selected>Select a department first</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Date *</label>
+                        <input type="date" name="appointment_date" class="form-control" min="{{ today }}" value="{{ today }}" required>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <label class="form-label">Time Slot *</label>
+                        <select name="time_slot" class="form-select" required>
+                            {% for slot in time_slots %}
+                            <option value="{{ slot }}">{{ slot }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Symptoms / Reason for Visit</label>
+                    <textarea name="symptoms" class="form-control" rows="2"></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary">Schedule</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('deptSelect').addEventListener('change', function () {
+    const deptId = this.value;
+    const doctorSelect = document.getElementById('doctorSelect');
+    doctorSelect.disabled = true;
+    doctorSelect.innerHTML = '<option value="">Loading doctors...</option>';
+
+    fetch(`/api/doctors_by_dept/${deptId}`)
+        .then(response => response.json())
+        .then(doctors => {
+            doctorSelect.innerHTML = '';
+            if (doctors.length === 0) {
+                doctorSelect.innerHTML = '<option value="">No active doctors in this department</option>';
+                return;
+            }
+            const placeholder = document.createElement('option');
+            placeholder.value = '';
+            placeholder.disabled = true;
+            placeholder.selected = true;
+            placeholder.textContent = 'Select a doctor';
+            doctorSelect.appendChild(placeholder);
+
+            doctors.forEach(doc => {
+                const opt = document.createElement('option');
+                opt.value = doc.doctor_id;
+                opt.textContent = `${doc.doctor_name} (${doc.title || 'Doctor'}) - $${doc.fee.toFixed(2)}`;
+                doctorSelect.appendChild(opt);
+            });
+            doctorSelect.disabled = false;
+        })
+        .catch(() => {
+            doctorSelect.innerHTML = '<option value="">Failed to load doctors</option>';
+        });
+});
+</script>
+{% endblock %}
