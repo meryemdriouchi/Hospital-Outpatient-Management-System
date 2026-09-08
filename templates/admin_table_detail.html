@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ table_name }} &middot; Outpatient MS{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <a href="{{ url_for('admin_tables') }}" class="text-decoration-none small text-muted d-block mb-1">
+            <i class="bi bi-arrow-left"></i> Database Tables
+        </a>
+        <h3 class="fw-bold mb-0"><code>{{ table_name }}</code></h3>
+        <p class="text-muted small mb-0">
+            {{ total }} row{{ '' if total == 1 else 's' }} total &middot;
+            showing page {{ page }} of {{ total_pages }}
+        </p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm mb-0 align-middle">
+                <thead>
+                <tr>
+                    {% for col in columns %}
+                    <th class="text-nowrap">{{ col }}</th>
+                    {% endfor %}
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                <tr>
+                    {% for col in columns %}
+                    <td class="text-nowrap">
+                        {% if row[col] is none %}
+                        <span class="text-muted fst-italic">NULL</span>
+                        {% else %}
+                        {{ row[col] }}
+                        {% endif %}
+                    </td>
+                    {% endfor %}
+                </tr>
+                {% else %}
+                <tr><td colspan="{{ columns|length }}" class="text-center text-muted py-4">This table has no rows.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% if total_pages > 1 %}
+<nav class="mt-3">
+    <ul class="pagination pagination-sm justify-content-center mb-0">
+        <li class="page-item {{ 'disabled' if page <= 1 }}">
+            <a class="page-link" href="{{ url_for('admin_table_detail', table_name=table_name, page=page-1) }}">Previous</a>
+        </li>
+        <li class="page-item disabled">
+            <span class="page-link">Page {{ page }} of {{ total_pages }}</span>
+        </li>
+        <li class="page-item {{ 'disabled' if page >= total_pages }}">
+            <a class="page-link" href="{{ url_for('admin_table_detail', table_name=table_name, page=page+1) }}">Next</a>
+        </li>
+    </ul>
+</nav>
+{% endif %}
+
+{% endblock %}

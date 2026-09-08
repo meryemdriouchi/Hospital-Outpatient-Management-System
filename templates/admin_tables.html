@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Database Tables &middot; Outpatient MS{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h3 class="fw-bold mb-0">Database Tables</h3>
+        <p class="text-muted small mb-0">Read-only browser for every table and view in the database.</p>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Rows</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for t in tables %}
+                <tr>
+                    <td><code>{{ t.name }}</code></td>
+                    <td>
+                        {% if t.type == 'VIEW' %}
+                        <span class="badge bg-info-subtle text-info-emphasis">View</span>
+                        {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis">Table</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ t.count }}</td>
+                    <td>
+                        <a href="{{ url_for('admin_table_detail', table_name=t.name) }}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-eye-fill"></i> Browse
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="4" class="text-center text-muted py-4">No tables found.</td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

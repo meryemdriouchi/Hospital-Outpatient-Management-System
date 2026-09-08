@@ -694,6 +694,83 @@ def reports():
 
 
 # ----------------------------------------------------------------------------
+# Database explorer (admin only, read-only)
+# ----------------------------------------------------------------------------
+
+TABLE_PAGE_SIZE = 50
+
+
+def get_catalog_entries():
+    """Return {name, type} for every table/view in the app's own database,
+    straight from information_schema. Used to whitelist identifiers before
+    they're interpolated into SQL (table/view names can't be parameterized)."""
+    return query_all(
+        """SELECT TABLE_NAME AS name, TABLE_TYPE AS type
+           FROM information_schema.tables
+           WHERE TABLE_SCHEMA = %s
+           ORDER BY TABLE_TYPE, TABLE_NAME""",
+        (app.config["MYSQL_DB"],),
+    )
+
+
+@app.route("/admin/tables")
+@login_required
+@role_required(["admin"])
+def admin_tables():
+    entries = get_catalog_entries()
+    tables = []
+    for entry in entries:
+        count = query_one(f"SELECT COUNT(*) AS c FROM `{entry['name']}`")["c"]
+        tables.append({"name": entry["name"], "type": entry["type"], "count": count})
+    return render_template("admin_tables.html", tables=tables)
+
+
+@app.route("/admin/tables/<table_name>")
+@login_required
+@role_required(["admin"])
+def admin_table_detail(table_name):
+    valid_names = {entry["name"] for entry in get_catalog_entries()}
+    if table_name not in valid_names:
+        abort(404)
+
+    columns = [
+        row["name"]
+        for row in query_all(
+            """SELECT COLUMN_NAME AS name
+               FROM information_schema.columns
+               WHERE TABLE_SCHEMA = %s AND TABLE_NAME = %s
+               ORDER BY ORDINAL_POSITION""",
+            (app.config["MYSQL_DB"], table_name),
+        )
+    ]
+
+    total = query_one(f"SELECT COUNT(*) AS c FROM `{table_name}`")["c"]
+    total_pages = max((total + TABLE_PAGE_SIZE - 1) // TABLE_PAGE_SIZE, 1)
+
+    try:
+        page = int(request.args.get("page", 1))
+    except ValueError:
+        page = 1
+    page = min(max(page, 1), total_pages)
+    offset = (page - 1) * TABLE_PAGE_SIZE
+
+    rows = query_all(
+        f"SELECT * FROM `{table_name}` LIMIT %s OFFSET %s", (TABLE_PAGE_SIZE, offset)
+    )
+
+    return render_template(
+        "admin_table_detail.html",
+        table_name=table_name,
+        columns=columns,
+        rows=rows,
+        page=page,
+        total_pages=total_pages,
+        total=total,
+        page_size=TABLE_PAGE_SIZE,
+    )
+
+
+# ----------------------------------------------------------------------------
 # Error handlers
 # ----------------------------------------------------------------------------
 
